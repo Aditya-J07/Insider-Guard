@@ -5,7 +5,9 @@ from typing import Dict, Optional, Set
 import requests
 import uuid
 import asyncio
-from database import log_collection, session_collection, log_helper, init_db
+from database import log_helper, SessionLocal, LogEntry
+from sqlalchemy.orm import Session
+from fastapi import Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -90,24 +92,26 @@ async def monitor_session_health():
     while True:
         now = datetime.now()
         for host, last_ping in list(agent_health.items()):
-            if (now - last_ping).total_seconds() > SABOTAGE_TIMEOUT:
-                print(f"\n[!!!] SABOTAGE DETECTED: {host} is OFFLINE.")
-                await session_collection.update_many(
-                    {"hostname": host, "active": True}, 
-                    {"$set": {"active": False, "status": "SABOTAGE", "end_time": now}}
-                )
-                agent_health.pop(host)
+            # Removed obsolete session_collection SABOTAGE check for now as we transition to SQLite.
+            # Future enhancement: Update SQLite to mark sessions as inactive instead.
+            pass
         await asyncio.sleep(5)
 
-# --- ENDPOINTS ---
+# --- DB DEPENDENCY ---
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
+# --- ENDPOINTS ---
 @app.on_event("startup")
 async def startup_event():
-    await init_db()
     asyncio.create_task(monitor_session_health())
 
 @app.post("/receive-log")
-async def receive_log(log: InsiderLog):
+async def receive_log(log: InsiderLog, db: Session = Depends(get_db)):
     # 1. IMMEDIATE BLOCK CHECK
     if log.username in blocked_users:
         return {"status": "BLOCKED", "message": "Security Lockdown Active"}
@@ -116,19 +120,19 @@ async def receive_log(log: InsiderLog):
     if log.action == "HONEYTOKEN_TRAP_TRIGGERED":
         blocked_users.add(log.username)
         print(f"\n[!!!] HONEYTOKEN TRIGGERED: {log.username} touched a decoy! BLOCKING...")
-        await log_collection.insert_one({**log.dict(), "risk_score": 999, "timestamp": datetime.now(), "status": "BLOCKED"})
+        
+        trap_log = LogEntry(
+            **log.dict(),
+            risk_score=999,
+            timestamp=datetime.now().isoformat(),
+            status="BLOCKED"
+        )
+        db.add(trap_log)
+        db.commit()
         return {"status": "BLOCKED", "reason": "Honeytoken Triggered"}
 
-    # 3. Session Correlation
-    session = await session_collection.find_one({"username": log.username, "active": True})
-    if not session:
-        session_id = str(uuid.uuid4())
-        await session_collection.insert_one({
-            "session_id": session_id, "username": log.username, 
-            "hostname": log.hostname, "start_time": datetime.now(), "active": True
-        })
-    else:
-        session_id = session["session_id"]
+    # 3. Session Correlation (Simplified for SQLite iteration 1)
+    session_id = str(uuid.uuid4())
 
     # 4. Intelligence & Behavioral Analysis
     geo = get_geo_intel(log.ip_address)
@@ -154,15 +158,16 @@ async def receive_log(log: InsiderLog):
         print(f"\n[!!!] SECURITY LOCKDOWN: {log.username} BLOCKED (Score: {total_score})")
 
     # 6. Save to Database
-    new_log = log.dict()
-    new_log.update({
-        "session_id": session_id,
-        "country": geo.get("country", "Unknown"),
-        "risk_score": total_score,
-        "timestamp": datetime.now(),
-        "status": "Notable" if total_score >= 80 else "Normal"
-    })
-    await log_collection.insert_one(new_log)
+    new_log = LogEntry(
+        **log.dict(),
+        session_id=session_id,
+        country=geo.get("country", "Unknown"),
+        risk_score=total_score,
+        timestamp=datetime.now().isoformat(),
+        status="Notable" if total_score >= 80 else "Normal"
+    )
+    db.add(new_log)
+    db.commit()
     
     return {"status": "Processed", "risk": total_score}
 
@@ -178,8 +183,18 @@ def get_status():
             for host, last in agent_health.items()}
 
 @app.get("/view-logs")
-async def view_logs():
-    return [log_helper(log) async for log in log_collection.find()]
+async def view_logs(db: Session = Depends(get_db)):
+    logs = db.query(LogEntry).order_by(LogEntry.timestamp.desc()).all()
+    # Format the objects manually to match the frontend expectations
+    return [{
+        "id": log.id,
+        "username": log.username,
+        "action": log.action,
+        "resource": log.resource,
+        "ip_address": log.ip_address,
+        "risk_score": log.risk_score,
+        "timestamp": log.timestamp
+    } for log in logs]
 
 @app.post("/reset")
 async def reset_demo():
@@ -188,6 +203,5 @@ async def reset_demo():
     user_risk_scores.clear()
     user_activity_window.clear()
     user_delete_window.clear()
-    # Note: log_collection is NOT cleared so historical incidents stay on the dashboard
-    session_collection.data.clear()
+    # Note: SQLite DB is not explicitly dropped here, handled externally for demos.
     return {"status": "Reset Successful - Historical Logs Preserved"}
