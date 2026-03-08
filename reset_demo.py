@@ -26,6 +26,15 @@ for filename in os.listdir("SENSITIVE_DATA"):
     except Exception as e:
         pass
 
+print("[*] Purging SQLite Database History...")
+db_path = os.path.join("backend", "soc_simulator.db")
+try:
+    if os.path.exists(db_path):
+        os.remove(db_path)
+        print("    -> Database purged successfully.")
+except Exception as e:
+    print(f"    -> [!] Could not delete db: {e}")
+
 print("=======================================")
 print("[*] Demo Environmental Reset Complete! You are unblocked.")
 print("[*] You can safely modify files in SENSITIVE_DATA now.")

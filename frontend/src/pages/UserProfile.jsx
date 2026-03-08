@@ -57,8 +57,8 @@ export default function UserProfile() {
           <span className="text-[11px] font-bold text-slate-400 uppercase">{logs.length} Total Events</span>
         </div>
         <div className="space-y-4">
-          {logs.map((log, i) => (
-            <div key={i} className="flex items-center justify-between p-4 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all group">
+          {logs.map((log) => (
+            <div key={log.id} className="flex items-center justify-between p-4 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all group">
               <div className="flex gap-5 items-center">
                 <div className={`p-2 rounded-md ${log.risk_score >= 100 ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-400'}`}>
                   <Activity size={18} />
