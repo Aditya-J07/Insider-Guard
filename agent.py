@@ -116,13 +116,12 @@ class InsiderHandler(FileSystemEventHandler):
             "severity": severity
         }
         try:
-            requests.post(API_URL, json=payload, timeout=2)
-        except:
-            pass
-        response = requests.post(API_URL, json=payload, timeout=2)
+            response = requests.post(API_URL, json=payload, timeout=2)
+            if response.status_code == 200 and response.json().get("status") == "BLOCKED":
+                lockdown_sensitive_folder()
+        except Exception as e:
+            print(f"[!] Warning: Could not send log to SIEM (Server Offline?): {e}")
 
-        if response.json().get("status") == "BLOCKED":
-            lockdown_sensitive_folder()
 
 # --- BACKGROUND TASKS ---
 def send_heartbeat():

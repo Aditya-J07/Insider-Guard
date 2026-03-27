@@ -4,8 +4,8 @@ echo ==========================================
 echo [*] INITIATING: Full Environment Reset
 echo ==========================================
 echo.
-python reset_demo.py
-python reset_demo.py >nul 2>&1
+py reset_demo.py
+py reset_demo.py >nul 2>&1
 echo.
 echo [*] RESET COMPLETE! 
 echo [+] The dashboard is clear and the SENSITIVE_DATA folder is empty.

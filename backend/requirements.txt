@@ -1,1 +1,9 @@
 sqlalchemy
+psycopg2-binary
+python-dotenv
+fastapi
+uvicorn
+requests
+pydantic
+watchdog
+python-magic-bin
