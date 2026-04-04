@@ -36,6 +36,12 @@ The project includes an automation suite located in `Demo_Automations/` for seam
 - run `START_PROJECT.bat` to launch the Backend, Frontend, and Agent simultaneously.
 - Trigger specific attack scenarios like **Honeytoken Traps**, **Mass Deletion**, and **Extension Tampering** to demonstrate the simulator's real-time detection capabilities.
 
+## Screenshots
+<img width="1440" height="687" alt="image" src="https://github.com/user-attachments/assets/ef45c740-8571-48df-b172-df9627be0967" />
+<img width="1600" height="712" alt="image" src="https://github.com/user-attachments/assets/70fbe4fb-ff69-4d34-b67d-8fb114eda6d5" />
+<img width="1600" height="773" alt="image" src="https://github.com/user-attachments/assets/e93e5b97-047e-4f55-91e1-7a40b179e4e7" />
+
+
 ## Tech Stack
 ### Endpoint Agent
 *   **Language:** Python
