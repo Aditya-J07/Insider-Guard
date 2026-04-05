@@ -1,4 +1,4 @@
-# 🛸 Insider Threat SOC Simulator 
+# 🛸 Insider Threat SOC Simulator
 
 ## The Problem Statement
 
